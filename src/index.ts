@@ -1,17 +1,22 @@
-import { onLoad, onResize, pressedKeys } from "./utils/base";
+import { onLoad, onResize, pressedKeys, vec4s } from "./utils/base";
 import WebGLUtils from "./lib/webgl/webgl-utils";
 import {
     clearSetup,
     Direction,
     loadShaders,
+    rotate,
     Vec3,
     viewportSetup,
 } from "./utils/graphics";
 import Renderer from "./renderer/renderer";
 import Cube from "./shapes/cube";
 import Camera from "./renderer/camera";
-import { add, scale } from "./lib/webgl/MV";
+import { add, mult, scale } from "./lib/webgl/MV";
 import { clamp, DEG_TO_RAD } from "./utils/math";
+import treeGen from "./tree-gen";
+import Empty from "./shapes/empty";
+import Shape from "./shapes/shape";
+
 const renderer = new Renderer();
 let cursorLock = false;
 
@@ -50,7 +55,7 @@ const main = () => {
 
     const program = loadShaders(gl, "vertex-shader", "fragment-shader");
 
-    const camera = new Camera(0, -1.5, 10).setUpdate(({ deltaTime }, that) => {
+    const camera = new Camera(0, 30, 60).setUpdate(({ deltaTime }, that) => {
         const {
             ShiftLeft = false,
             Space = false,
@@ -86,16 +91,125 @@ const main = () => {
 
     onResize(() => camera.updatePerspective(gl));
 
-    new Cube(0,0,0).build(renderer);
+    const genBranches = (
+        input: string,
+        turtle: { location: Vec3; rotation: Vec3 },
+        length: number,
+        angle: number
+    ) => {
+        const clone = (turtle: { location: Vec3; rotation: Vec3 }) =>
+            JSON.parse(JSON.stringify(turtle)) as {
+                location: Vec3;
+                rotation: Vec3;
+            };
+
+        const getDirection = (rotation: Vec3) =>
+            mult(rotate(...rotation), [...Direction.up, 1]).slice(0, 3);
+
+        const branches: Shape[] = [];
+        const turtleStack: { location: Vec3; rotation: Vec3 }[] = [];
+        for (let instruction of input) {
+            switch (instruction) {
+                // F: Move forward a step of length len, drawing a line (or cylinder) to the new point.
+                case "F":
+                    branches.push(
+                        branch(length, turtle.rotation, turtle.location)
+                    );
+
+                    turtle.location = add(
+                        turtle.location,
+                        scale(length, getDirection(turtle.rotation))
+                    ) as Vec3;
+                    break;
+                // f: Move forward a step of length len without drawing
+                case "f":
+                    turtle.location = add(
+                        turtle.location,
+                        scale(length, getDirection(turtle.rotation))
+                    ) as Vec3;
+                    break;
+                // +: Apply a positive rotation about the X-axis of xrot degrees.
+                case "+":
+                    turtle.rotation[0] += angle;
+                    break;
+                // -: Apply a negative rotation about the X-axis of xrot degrees.
+                case "-":
+                    turtle.rotation[0] -= angle;
+                    break;
+                // &: Apply a positive rotation about the Y-axis of yrot degrees.
+                case "&":
+                    turtle.rotation[1] += angle;
+                    break;
+                // ^: Apply a negative rotation about the Y-axis of yrot degrees.
+                case "^":
+                    turtle.rotation[1] -= angle;
+                    break;
+                // \: Apply a positive rotation about the Z-axis of zrot degrees.
+                case "\\":
+                    turtle.rotation[2] += angle;
+                    break;
+                // /: Apply a negative rotation about the Z-axis of zrot degrees.
+                case "/":
+                    turtle.rotation[2] -= angle;
+                    break;
+                // |: Turn around 180 degrees.
+                case "|":
+                    turtle.rotation = turtle.rotation.map(
+                        (x) => x + 180
+                    ) as Vec3;
+                    break;
+                // [: Push the current state of the turtle onto a pushdown stack.
+                case "[":
+                    turtleStack.push(clone(turtle));
+                    break;
+                // ]: Pop the state from the top of the turtle stack, and make it the current turtle stack
+                case "]":
+                    if (turtleStack.length === 0) {
+                        throw new Error("Turtle stack is empty");
+                    }
+                    const newTurtle = turtleStack.pop();
+                    if (newTurtle) turtle = newTurtle;
+                    break;
+            }
+        }
+        const tree = new Empty(0, 0, 0).setChildren(...branches);
+        return tree;
+    };
+
+    const branch = (
+        length: number,
+        rotation: Vec3,
+        location: Vec3 = [0, 0, 0]
+    ) => {
+        const branchObject: Empty = new Empty(...location)
+            .setChildren(new Cube(0, length / 2, 0).setScale(0.1, length, 0.1))
+            .setRotation(...rotation);
+        return branchObject;
+    };
+
+    const n = 1;
+    const angle = 60;
+
+    const turtle = {
+        location: [0, 0, 0] as Vec3,
+        rotation: [0, 0, 0] as Vec3,
+    };
+
+    new Empty(0, 0, 0)
+        .setChildren(genBranches(treeGen, turtle, n, angle))
+        .setRotation(0, -90, 0)
+        .setScale(0.5, 0.5, 0.5)
+        .build(renderer);
+    console.log(treeGen);
 
     renderer.setup(gl, program, camera);
 
-    const tMatrixLoc = gl.getUniformLocation(program, "tMatrix");
-    const tNormalMatrixLoc = gl.getUniformLocation(program, "tNormalMatrix");
-
     startTime = Date.now();
     lastRan = startTime;
-    setupRender(gl, { tMatrixLoc, tNormalMatrixLoc });
+    setupRender(gl, {
+        tMatrixLoc: gl.getUniformLocation(program, "tMatrix"),
+        tNormalMatrixLoc: gl.getUniformLocation(program, "tNormalMatrix"),
+    });
 };
 
 let startTime = 0;

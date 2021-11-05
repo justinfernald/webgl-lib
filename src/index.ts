@@ -13,8 +13,8 @@ import Cube from "./shapes/cube";
 import Camera from "./renderer/camera";
 import { add, mult, scale } from "./lib/webgl/MV";
 import { clamp, DEG_TO_RAD } from "./utils/math";
-import treeGen from "./tree-gen";
-import Empty from "./shapes/empty";
+import treeGen, { grammar1, grammar2, grammar3, grammar4 } from "./tree-gen";
+// import Empty from "./shapes/empty";
 import Shape from "./shapes/shape";
 
 const renderer = new Renderer();
@@ -165,14 +165,14 @@ const main = () => {
                 // ]: Pop the state from the top of the turtle stack, and make it the current turtle stack
                 case "]":
                     if (turtleStack.length === 0) {
-                        throw new Error("Turtle stack is empty");
+                        throw new Error("Turtle stack is Cube");
                     }
                     const newTurtle = turtleStack.pop();
                     if (newTurtle) turtle = newTurtle;
                     break;
             }
         }
-        const tree = new Empty(0, 0, 0).setChildren(...branches);
+        const tree = new Cube(0, 0, 0).setChildren(...branches);
         return tree;
     };
 
@@ -181,26 +181,53 @@ const main = () => {
         rotation: Vec3,
         location: Vec3 = [0, 0, 0]
     ) => {
-        const branchObject: Empty = new Empty(...location)
+        const branchObject: Cube = new Cube(...location)
             .setChildren(new Cube(0, length / 2, 0).setScale(0.1, length, 0.1))
             .setRotation(...rotation);
         return branchObject;
     };
 
-    const n = 1;
-    const angle = 60;
+    const n = 5;
+    const angle = 22.5;
 
     const turtle = {
         location: [0, 0, 0] as Vec3,
         rotation: [0, 0, 0] as Vec3,
     };
+    const turtle2 = {
+        location: [0, 0, 0] as Vec3,
+        rotation: [0, 0, 0] as Vec3,
+    };
 
-    new Empty(0, 0, 0)
-        .setChildren(genBranches(treeGen, turtle, n, angle))
-        .setRotation(0, -90, 0)
-        .setScale(0.5, 0.5, 0.5)
+    const tree1 = genBranches(treeGen(grammar3), turtle, n, angle);
+    const tree2 = genBranches(treeGen(grammar3), turtle2, n, angle);
+
+    console.log({ tree1, tree2 });
+
+    new Cube(0, 0, 0)
+        .setChildren(
+            new Cube(0, 0, 0)
+                .setChildren(tree1)
+                .setRotation(0, -90, 0)
+                .setScale(0.2, 0.2, 0.2),
+            new Cube(0, 0, 0)
+                .setChildren(tree2)
+                .setRotation(0, -90, 0)
+                .setScale(0.2, 0.2, 0.2)
+                .setPosition(0, 0, 1)
+            // new Cube(0, 0, 0)
+            //     .setChildren(new Cube())
+            //     .setRotation(0, -45, 0)
+            //     .setScale(0.2, 0.2, 0.2),
+            // new Cube(0, 0, 0)
+            //     .setChildren(new Cube())
+            //     .setRotation(0, -45, 0)
+            //     .setScale(0.4, 0.4, 0.4)
+            //     .setPosition(0, 0, 1)
+        )
         .build(renderer);
-    console.log(treeGen);
+
+    // console.log(treeGen);
 
     renderer.setup(gl, program, camera);
 

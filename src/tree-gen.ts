@@ -1,6 +1,6 @@
 import { Grammar, r, randomGenerate } from "./utils/gen-grammar";
 
-let grammar1: Grammar = {
+export let grammar1: Grammar = {
     rules: {
         F: [
             {
@@ -13,7 +13,7 @@ let grammar1: Grammar = {
     starting: "F",
 };
 
-let grammar2: Grammar = {
+export let grammar2: Grammar = {
     rules: {
         X: [
             {
@@ -30,34 +30,53 @@ let grammar2: Grammar = {
     starting: "X",
 };
 
-let grammar3: Grammar = {
+export let grammar3: Grammar = {
     rules: {
         F: [
             {
                 part: r`${"F"}[+${"F"}]${"F"}[-${"F"}][${"F"}]`,
-                weight: (t) => (t < 5 ? 1 : 0),
+                weight: (t) => (t < 3 ? 1 : 0),
             },
-            { part: r`F`, weight: (t) => (t < 5 ? 0 : 1) },
+            { part: r`F`, weight: (t) => (t < 3 ? 0 : 1) },
         ],
     },
     starting: "F",
 };
 
-let grammar4: Grammar = {
+export let grammar4: Grammar = {
     rules: {
         X: [
             {
                 part: r`${"F"}[+${"X"}][-${"X"}]${"F"}${"X"}`,
-                weight: (t) => (t < 7 ? 1 : 0),
+                weight: (t) => (t < 5 ? 1 : 0),
             },
-            { part: r``, weight: (t) => (t < 7 ? 0 : 1) },
+            { part: r``, weight: (t) => (t < 5 ? 0 : 1) },
         ],
         F: [
-            { part: r`${"F"}${"F"}`, weight: (t) => (t < 7 ? 1 : 0) },
-            { part: r`F`, weight: (t) => (t < 7 ? 0 : 1) },
+            { part: r`${"F"}${"F"}`, weight: (t) => (t < 5 ? 1 : 0) },
+            { part: r`F`, weight: (t) => (t < 5 ? 0 : 1) },
         ],
     },
     starting: "X",
 };
 
-export default randomGenerate(grammar4).join("");
+export let grammar5: Grammar = {
+    rules: {
+        X: [
+            {
+                part: r`${"F"}-[[${"X"}]+${"X"}]+${"F"}[+${"F"}${"X"}]-${"X"}`,
+                weight: (t) => (t < 4 ? 1 : 0),
+            },
+            { part: r``, weight: (t) => (t < 4 ? 0 : 1) },
+        ],
+        F: [
+            { part: r`${"F"}${"F"}`, weight: (t) => (t < 3 ? 1 : 0) },
+            { part: r`F`, weight: (t) => (t < 4 ? 0 : 1) },
+        ],
+    },
+    starting: "X",
+};
+
+export default (grammar: Grammar) => randomGenerate(grammar).join("");
+
+// export default randomGenerate(grammar5).join("");
